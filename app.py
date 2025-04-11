@@ -1,30 +1,36 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify,Response
 from flask_socketio import SocketIO, emit
 from callbacks import Callback
 from dashscope.audio.asr import TranslationRecognizerRealtime
 import dashscope
 import pymongo
 import os
+from flask_cors import CORS
 from dotenv import load_dotenv
+from flask import send_from_directory
 
 load_dotenv()
 # dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
 client = pymongo.MongoClient("mongodb://localhost:27017")
 db = client["rt-translate"]
 collection = db["response"]
-app = Flask(__name__)
+DIST_FOLDER='./web/build/client'
+app = Flask(__name__,static_folder=DIST_FOLDER, static_url_path="")
+CORS(app, origin='*')
 socketio = SocketIO(app)
 socketio.init_app(app, cors_allowed_origins="*")
 target_language = "en"
 source_language = "auto"
+
+
 def send_client(chunk, translation_result):
     if translation_result is not None:
         english_translation = translation_result.get_translation(target_language)
-        chunk['translation'] = {
+        chunk["translation"] = {
             "sentence_id": english_translation.sentence_id,
-            "text": english_translation.text
+            "text": english_translation.text,
         }
-        chunk['target_language']=translation_result.get_language_list(),
+        chunk["target_language"] = (translation_result.get_language_list(),)
     socketio.emit("llm_result", chunk)
     collection.insert_one(chunk)
 
@@ -39,8 +45,8 @@ def init_translator():
         sample_rate=16000,
         callback=callback,
         source_language=source_language,
-        translation_enabled=(target_language!="None"),
-        transcription_enabled=(source_language!="None"),
+        translation_enabled=(target_language != "None"),
+        transcription_enabled=(source_language != "None"),
         translation_target_languages=[target_language],
     )
 
@@ -93,15 +99,19 @@ def set_apikey():
     os.environ["DASHSCOPE_API_KEY"] = api_key
     dashscope.api_key = api_key
     return jsonify({"message": "API key set successfully"}), 200
+
+
 @app.route("/history/list", methods=["GET"])
 def list_history():
     # 从数据库中获取历史记录
     history = collection.find({}, {"_id": 0}).to_list()
     # 返回 JSON 格式的历史记录
     return jsonify(history)
+
+
 @app.route("/language/update", methods=["POST"])
 def set_language():
-    global target_language,source_language
+    global target_language, source_language
     data = request.get_json()
     target_language = data.get("target_language")
     source_language = data.get("source_language")
@@ -109,5 +119,9 @@ def set_language():
     translator = init_translator()
     return jsonify({"message": "language set successfully"}), 200
 
+@app.route("/")
+def print_hello():
+    return "hello world",200
+
 if __name__ == "__main__":
-    socketio.run(app, debug=True)
+    socketio.run(app, host="0.0.0.0", ssl_context=('./web/localhost+3.pem','./web/localhost+3-key.pem'),debug=True)

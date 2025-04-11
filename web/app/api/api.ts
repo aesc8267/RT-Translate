@@ -1,4 +1,4 @@
-let api_host='/v1'
+let api_host='https://192.168.31.172:5000'
 export default {
     //test
     list_history:`${api_host}/history/list`,

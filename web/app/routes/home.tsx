@@ -1,7 +1,4 @@
 import type { Route } from "./+types/home";
-import { Welcome } from "../components/welcome/welcome";
-import  App  from "../components/conversation/index";
-import MicPhone from '../components/MicComponent'
 import {Main} from '~/components/MicButton'
 export function meta({}: Route.MetaArgs) {
   return [

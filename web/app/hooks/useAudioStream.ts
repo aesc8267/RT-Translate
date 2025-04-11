@@ -10,7 +10,7 @@ export const useAudioStream = (
   const workletRef = useRef<AudioWorkletNode | null>(null);
   const [toggleStream, setToggleStream] = useState<boolean>(false);
   const startRecording = async () => {
-    socketRef.current = io("http://localhost:5000");
+    socketRef.current = io("https://192.168.31.172:5000");
 
     socketRef.current?.on("llm_result", (data: LLMResponse) => {
       console.log("llm_result", data);
